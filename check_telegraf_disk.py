@@ -53,7 +53,7 @@ class CheckDisk(Plugin):
 
             instance = self.args.instance
 
-            self.statusline = f" *{instance}* {used_percent:.2f}% used ({format_size(used)} of {format_size(total)})"
+            self.statusline = f" <strong>{instance}</strong> {used_percent:.2f}% used ({format_size(used)} of {format_size(total)})"
 
             return used_percent
 

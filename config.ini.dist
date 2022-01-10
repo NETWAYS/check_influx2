@@ -1,5 +1,6 @@
 [influx2]
 url=https://influxdb
+verify_ssl=True
 org=ORG
 bucket=telegraf
 token=BASE64

@@ -68,8 +68,10 @@ class Plugin(object):
 
         return parser
 
-    def __client__(self, url, token, org, **kwargs):
-        return InfluxDBClient(url=url, token=token, org=org)
+    def __client__(
+        self, url: str, token: str, org: str, verify_ssl: bool = True, **kwargs
+    ):
+        return InfluxDBClient(url=url, token=token, org=org, verify_ssl=verify_ssl)
 
     def __config__(self, config_dir: str = None):
         if config_dir is None:
@@ -81,7 +83,7 @@ class Plugin(object):
         config.read(config_file)
 
         if "url" in config["influx2"]:
-            return config["influx2"]
+            return config
 
     def build_result(self, result):
         results = SortedDict()
@@ -97,9 +99,10 @@ class Plugin(object):
         return results
 
     def build_from_query(self, filter: str):
+        config = self.config["influx2"]
         query = f"""
-        from(bucket: "{ self.config["bucket"] }")
-          |> range(start: { self.config["range"] })
+        from(bucket: "{ config["bucket"] }")
+          |> range(start: { config["range"] })
           {filter}
         """
 
@@ -157,7 +160,18 @@ class Plugin(object):
 
         self.config = self.__config__()
 
-        self.client = self.__client__(**self.config)
+        client_config = dict(self.config["influx2"])
+        client_config["verify_ssl"] = self.config["influx2"].getboolean(
+            "verify_ssl", fallback=True
+        )
+
+        if client_config["verify_ssl"] is False:
+            import urllib3
+
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            self.logger.warn("SSL verification is disabled")
+
+        self.client = self.__client__(**client_config)
 
         self.logger.debug("Run {0}", self.main)
 

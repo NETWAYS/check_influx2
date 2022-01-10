@@ -51,7 +51,9 @@ class CheckDisk(Plugin):
             self.perfdata["used_percent"] = f"{used_percent}b"
             self.perfdata["free_percent"] = f"{free_percent}b"
 
-            self.statusline = f"{used_percent:.2f}% used ({format_size(used)} of {format_size(total)})"
+            instance = self.args.instance
+
+            self.statusline = f" *{instance}* {used_percent:.2f}% used ({format_size(used)} of {format_size(total)})"
 
             return used_percent
 

@@ -193,9 +193,9 @@ class Plugin(object):
             time_delta = time_end - time_start
             self.perfdata["runtime"] = f"{time_delta.total_seconds()}s"
 
-        print(f"{self.prog}: {repr(self.status)} {self.statusline}")
+        perfdata = self.build_perfdata()
 
-        print(self.build_perfdata())
+        print(f"{self.prog}: {repr(self.status)} {self.statusline}|{perfdata}")
 
         sys.exit(self.status.value)
 

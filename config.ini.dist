@@ -1,0 +1,6 @@
+[influx2]
+url=https://influxdb
+org=ORG
+bucket=telegraf
+token=BASE64
+range=-1m

@@ -114,7 +114,7 @@ class Plugin(object):
         for k, v in self.perfdata.items():
             items.append(f"'{k}'={v}")
 
-        return ",".join(items)
+        return " ".join(items)
 
     def query(self, filter: str):
         query = self.build_from_query(filter)

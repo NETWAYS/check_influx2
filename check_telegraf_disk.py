@@ -55,8 +55,8 @@ class CheckDisk(Plugin):
             self.perfdata["used"] = f"{used}b"
             self.perfdata["free"] = f"{free}b"
             self.perfdata["total"] = f"{total}b"
-            self.perfdata["used_percent"] = f"{used_percent}b"
-            self.perfdata["free_percent"] = f"{free_percent}b"
+            self.perfdata["used_percent"] = f"{used_percent}%"
+            self.perfdata["free_percent"] = f"{free_percent}%"
 
             time_delta_seconds = self.timedelta_seconds(latest["_time"])
 

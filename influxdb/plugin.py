@@ -5,13 +5,12 @@ import logging
 import pathlib
 import configparser
 import datetime
-import pathlib
 
 from argparse import ArgumentParser
+from enum import Enum
+import urllib3
 from logbook import Logger, StreamHandler
 from logbook.compat import redirect_logging
-from enum import Enum
-from collections import namedtuple
 
 from influxdb_client import InfluxDBClient
 from sortedcontainers import SortedDict
@@ -31,7 +30,7 @@ class PluginError(RuntimeError):
     pass
 
 
-class Plugin(object):
+class Plugin:
     def __init__(self):
         self.prog = pathlib.Path(sys.argv[0]).stem
         self.status = STATE.UNKNOWN
@@ -39,6 +38,11 @@ class Plugin(object):
         self.perfdata = SortedDict()
 
         self.parser = self.__parser__()
+
+        self.args = None
+        self.logger = None
+        self.config = None
+        self.client = None
 
     def __logger__(self, verbose: bool = False):
         level = logging.ERROR
@@ -68,12 +72,12 @@ class Plugin(object):
 
         return parser
 
-    def __client__(
-        self, url: str, token: str, org: str, verify_ssl: bool = True, **kwargs
-    ):
+    @staticmethod
+    def __client__(url: str, token: str, org: str, verify_ssl: bool = True, **kwargs):
         return InfluxDBClient(url=url, token=token, org=org, verify_ssl=verify_ssl)
 
-    def __config__(self, config_dir: str = None):
+    @staticmethod
+    def __config__(config_dir: str = None):
         if config_dir is None:
             config_dir = pathlib.Path(__file__).parent.parent.resolve()
 
@@ -85,25 +89,28 @@ class Plugin(object):
         if "url" in config["influx2"]:
             return config
 
-    def build_result(self, result):
+        raise PluginError("Missing configuration in config.ini")
+
+    @staticmethod
+    def build_result(result):
         results = SortedDict()
         for table in result:
             for record in table.records:
                 timestamp = int(record.get_time().timestamp())
 
-                if not timestamp in results:
+                if timestamp not in results:
                     results[timestamp] = {"_time": record.get_time()}
 
                 results[timestamp][record.get_field()] = record.get_value()
 
         return results
 
-    def build_from_query(self, filter: str):
+    def build_from_query(self, flux_filter: str):
         config = self.config["influx2"]
         query = f"""
         from(bucket: "{ config["bucket"] }")
           |> range(start: { config["range"] })
-          {filter}
+          {flux_filter}
         """
 
         return query
@@ -116,12 +123,20 @@ class Plugin(object):
 
         return " ".join(items)
 
-    def query(self, filter: str):
-        query = self.build_from_query(filter)
+    def timedelta_seconds(self, dt: datetime.datetime) -> int:
+        time_delta = (datetime.datetime.now(datetime.timezone.utc)) - dt
+
+        self.perfdata["timestamp"] = int(datetime.datetime.timestamp(dt))
+
+        return time_delta.total_seconds()
+
+    def query(self, flux_filter: str):
+        query = self.build_from_query(flux_filter)
 
         return self.build_result(self.client.query_api().query(query=query))
 
-    def check_threshold(self, value: float, threshold: str) -> bool:
+    @staticmethod
+    def check_threshold(value: float, threshold: str) -> bool:
         if threshold[0] == "@":
             inside = True
             threshold = threshold[1:]
@@ -139,16 +154,17 @@ class Plugin(object):
         elif len(values) == 2:
             val1 = float(values[0]) if values[0] else float("-inf")
             val2 = float(values[1]) if values[1] else float("+inf")
-
         else:
             raise PluginError("Error parsing thresholds")
 
-        if inside is True and value >= val1 and value <= val2:
-            return True
-        elif inside is False and (value < val1 or value > val2):
-            return True
+        check_value = False
 
-        return False
+        if inside is True and value >= val1 and value <= val2:
+            check_value = True
+        elif inside is False and (value < val1 or value > val2):
+            check_value = True
+
+        return check_value
 
     def main(self):
         raise NotImplementedError()
@@ -166,8 +182,6 @@ class Plugin(object):
         )
 
         if client_config["verify_ssl"] is False:
-            import urllib3
-
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             self.logger.warn("SSL verification is disabled")
 

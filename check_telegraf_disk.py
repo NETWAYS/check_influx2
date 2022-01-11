@@ -2,11 +2,9 @@
 
 # check_influx2 | (c) 2022 NETWAYS | MIT
 
-import datetime
-
 from pprint import pformat
-from influxdb.plugin import Plugin, PluginError, STATE
 from humanfriendly import format_size, format_timespan
+from influxdb.plugin import Plugin, PluginError
 
 
 class CheckDisk(Plugin):
@@ -22,9 +20,15 @@ class CheckDisk(Plugin):
         instance = self.args.instance
 
         result = self.query(
-            f"""|> filter(fn: (r) => r["_measurement"] == "disk" or r["_measurement"] == "win_disk")
+            f"""|> filter(fn: (r) => 
+                r["_measurement"] == "disk" 
+                or r["_measurement"] == "win_disk"
+            )
             |> filter(fn: (r) => r["host"] == "{host}")
-            |> filter(fn: (r) => r["instance"] == "{instance}" or r["device"] == "{instance}" or r["path"] == "{instance}")"""
+            |> filter(fn: (r) => 
+                r["instance"] == "{instance}"
+                or r["device"] == "{instance}" or r["path"] == "{instance}"
+            )"""
         )
 
         try:
@@ -48,34 +52,31 @@ class CheckDisk(Plugin):
                 used = (free / free_percent) * used_percent
                 total = free + used
 
-            time_delta = (datetime.datetime.now(datetime.timezone.utc)) - latest[
-                "_time"
-            ]
-
             self.perfdata["used"] = f"{used}b"
             self.perfdata["free"] = f"{free}b"
             self.perfdata["total"] = f"{total}b"
             self.perfdata["used_percent"] = f"{used_percent}b"
             self.perfdata["free_percent"] = f"{free_percent}b"
-            self.perfdata["timestamp"] = datetime.datetime.timestamp(latest["_time"])
+
+            time_delta_seconds = self.timedelta_seconds(latest["_time"])
 
             instance = self.args.instance
 
-            self.logger.debug(pformat(latest))
+            self.logger.debug("Influx data={0}", pformat(latest))
 
             self.statusline = (
                 f" <strong>{instance}</strong>"
                 + f" {used_percent:.2f}% used"
                 + " ("
                 + f"{format_size(used)} of {format_size(total)}"
-                + f", {format_timespan(time_delta.total_seconds())} ago"
+                + f", {format_timespan(time_delta_seconds)} ago"
                 + ")"
             )
 
             return used_percent
 
-        except IndexError:
-            raise PluginError(f"No data for {host}")
+        except IndexError as orig_exc:
+            raise PluginError(f"No data for {host}") from orig_exc
 
 
 CheckDisk.run()

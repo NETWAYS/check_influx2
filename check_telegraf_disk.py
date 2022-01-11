@@ -2,8 +2,11 @@
 
 # check_influx2 | (c) 2022 NETWAYS | MIT
 
+import datetime
+
+from pprint import pformat
 from influxdb.plugin import Plugin, PluginError, STATE
-from humanfriendly import format_size
+from humanfriendly import format_size, format_timespan
 
 
 class CheckDisk(Plugin):
@@ -45,15 +48,29 @@ class CheckDisk(Plugin):
                 used = (free / free_percent) * used_percent
                 total = free + used
 
+            time_delta = (datetime.datetime.now(datetime.timezone.utc)) - latest[
+                "_time"
+            ]
+
             self.perfdata["used"] = f"{used}b"
             self.perfdata["free"] = f"{free}b"
             self.perfdata["total"] = f"{total}b"
             self.perfdata["used_percent"] = f"{used_percent}b"
             self.perfdata["free_percent"] = f"{free_percent}b"
+            self.perfdata["timestamp"] = datetime.datetime.timestamp(latest["_time"])
 
             instance = self.args.instance
 
-            self.statusline = f" <strong>{instance}</strong> {used_percent:.2f}% used ({format_size(used)} of {format_size(total)})"
+            self.logger.debug(pformat(latest))
+
+            self.statusline = (
+                f" <strong>{instance}</strong>"
+                + f" {used_percent:.2f}% used"
+                + " ("
+                + f"{format_size(used)} of {format_size(total)}"
+                + f", {format_timespan(time_delta.total_seconds())} ago"
+                + ")"
+            )
 
             return used_percent
 

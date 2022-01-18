@@ -60,8 +60,6 @@ class CheckDisk(Plugin):
 
             time_delta_seconds = self.timedelta_seconds(latest["_time"])
 
-            instance = self.args.instance
-
             self.logger.debug("Influx data={0}", pformat(latest))
 
             self.statusline = (

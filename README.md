@@ -15,6 +15,11 @@ Framework to build icinga checks against influx2
 
 ./check_telegraf_disk.py -H WINDOWS_HOST -I D: -w 90 -c 95
 
+./check_telegraf_mailqueue.py -H POSTFIX_HOST -I deferred -w 5 -c 10
+
+ ./check_telegraf_mailqueue.py -H EXCHANGE_HOST \
+   -I Aggregate_Shadow_Queue_Length -w 50 -c 80
+
 ```
 
 ## Installation

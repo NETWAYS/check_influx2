@@ -9,7 +9,7 @@ from humanfriendly import format_timespan
 from influxdb.plugin import Plugin, PluginError
 
 
-class CheckDisk(Plugin):
+class CheckMailqueue(Plugin):
     def __init__(self):
         super().__init__()
 
@@ -61,4 +61,4 @@ class CheckDisk(Plugin):
             raise PluginError(f"No data for {host}") from orig_exc
 
 
-CheckDisk.run()
+CheckMailqueue.run()
